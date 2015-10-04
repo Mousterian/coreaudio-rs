@@ -1,12 +1,13 @@
 //! This module is an attempt at rustifying the OSStatus result.
 
-use bindings::audio_unit::OSStatus;
+use bindings::core_audio::OSStatus;
 pub use self::audio::Error as AudioError;
 pub use self::audio_codec::Error as AudioCodecError;
 pub use self::audio_unit::Error as AudioUnitError;
+pub use self::audio_file::Error as AudioFileError;
 
 pub mod audio {
-    use bindings::audio_unit::OSStatus;
+    use bindings::core_audio::OSStatus;
 
     #[derive(Copy, Clone, Debug)]
     pub enum Error {
@@ -67,7 +68,7 @@ pub mod audio {
 
 
 pub mod audio_codec {
-    use bindings::audio_unit::OSStatus;
+    use bindings::core_audio::OSStatus;
 
     #[derive(Copy, Clone, Debug)]
     pub enum Error {
@@ -128,7 +129,7 @@ pub mod audio_codec {
 
 
 pub mod audio_unit {
-    use bindings::audio_unit::OSStatus;
+    use bindings::core_audio::OSStatus;
 
     #[derive(Copy, Clone, Debug)]
     pub enum Error {
@@ -216,6 +217,92 @@ pub mod audio_unit {
 
 }
 
+pub mod audio_file {
+    use bindings::core_audio::OSStatus;
+
+    #[derive(Copy, Clone, Debug)]
+    pub enum Error {
+        Unspecified = 2003334207,
+        UnsupportedFileType = 1954115647,
+        UnsupportedDataFormat = 1718449215,
+        UnsupportedProperty = 1886681407,
+        BadPropertySize = 561211770,
+        Permissions = 1886547263,
+        NotOptimized = 1869640813,
+        InvalidChunk = 1667787583,
+        DoesNotAllow64BitDataSize = 1868981823,
+        InvalidPacketOffset = 1885563711,
+        InvalidFile = 1685348671,
+        OperationNotSupported = 1869627199,
+        NotOpen = -38,
+        EndOfFile = -39,
+        Position = -40,
+        FileNotFound = -43,
+        Unknown
+    }
+
+    impl Error {
+
+        pub fn from_os_status(os_status: OSStatus) -> Result<(), Error> {
+            match os_status {
+				2003334207 => Err(Error::Unspecified),
+				1954115647 => Err(Error::UnsupportedFileType),
+				1718449215 => Err(Error::UnsupportedDataFormat),
+				1886681407 => Err(Error::UnsupportedProperty),
+				561211770 => Err(Error::BadPropertySize),
+				1886547263 => Err(Error::Permissions),
+				1869640813 => Err(Error::NotOptimized),
+				1667787583 => Err(Error::InvalidChunk),
+				1868981823 => Err(Error::DoesNotAllow64BitDataSize),
+				1885563711 => Err(Error::InvalidPacketOffset),
+				1685348671 => Err(Error::InvalidFile),
+				1869627199 => Err(Error::OperationNotSupported),
+				-38 => Err(Error::NotOpen),
+				-39 => Err(Error::EndOfFile),
+				-40 => Err(Error::Position),
+				-43 => Err(Error::FileNotFound),
+				_      => Err(Error::Unknown),
+			}
+        }
+
+        pub fn to_os_status(&self) -> OSStatus {
+            *self as OSStatus
+        }
+
+    }
+
+    impl ::std::fmt::Display for Error {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error> {
+            write!(f, "{:?}", self)
+        }
+    }
+
+    impl ::std::error::Error for Error {
+        fn description(&self) -> &str {
+            match *self {
+				Error::Unspecified                  => "Unspecified",
+				Error::UnsupportedFileType          => "Unsupported File Type",
+				Error::UnsupportedDataFormat        => "Unsupported Data Format",
+				Error::UnsupportedProperty          => "Unsupported Property",
+				Error::BadPropertySize              => "Bad Property Size",
+				Error::Permissions                  => "Permissions",
+				Error::NotOptimized                 => "Not Optimized",
+				Error::InvalidChunk                 => "Invalid Chunk",
+				Error::DoesNotAllow64BitDataSize    => "Does Not Allow 64 Bit Data Size",
+				Error::InvalidPacketOffset          => "Invalid Packet Offset",
+				Error::InvalidFile                  => "Invalid File",
+				Error::OperationNotSupported        => "Operation Not Supported",
+				Error::NotOpen                      => "Not Open",
+				Error::EndOfFile                    => "End Of File",
+				Error::Position                     => "Position",
+				Error::FileNotFound                 => "File Not Found",
+				Error::Unknown                      => "Unknown error occurred",
+			}
+        }
+    }
+
+}
+
 
 #[derive(Copy, Clone, Debug)]
 pub enum Error {
@@ -225,6 +312,7 @@ pub enum Error {
     Audio(AudioError),
     AudioCodec(AudioCodecError),
     AudioUnit(AudioUnitError),
+    AudioFile(AudioFileError),
     Unknown,
 }
 
@@ -252,6 +340,11 @@ impl Error {
                     Err(AudioUnitError::Unknown) => (),
                     Err(err)                     => return Err(Error::AudioUnit(err)),
                 }
+                match AudioFileError::from_os_status(os_status) {
+                        Ok(())                       => return Ok(()),
+                        Err(AudioFileError::Unknown) => (),
+                        Err(err)                     => return Err(Error::AudioFile(err)),
+                    }
                 Err(Error::Unknown)
             },
         }
@@ -266,6 +359,7 @@ impl Error {
             Error::Audio(err)                       => err as OSStatus,
             Error::AudioCodec(err)                  => err as OSStatus,
             Error::AudioUnit(err)                   => err as OSStatus,
+            Error::AudioFile(err)                   => err as OSStatus,
             _                                       => -1500,
         }
     }
@@ -287,6 +381,7 @@ impl ::std::error::Error for Error {
             Error::Audio(ref err)                   => err.description(),
             Error::AudioCodec(ref err)              => err.description(),
             Error::AudioUnit(ref err)               => err.description(),
+            Error::AudioFile(ref err)               => err.description(),
             Error::Unknown                          => "An unknown error occurred",
         }
     }
