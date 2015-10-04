@@ -1,5 +1,5 @@
 
-use bindings::audio_unit as au;
+use bindings::core_audio as au;
 use super::audio_format::AudioFormat;
 
 /// Representation of the AudioStreamBasicDescription.
