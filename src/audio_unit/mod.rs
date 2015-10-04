@@ -15,7 +15,6 @@ use self::stream_format::StreamFormat;
 use std::mem;
 
 pub mod audio_format;
-pub mod audio_toolbox;
 pub mod stream_format;
 
 /// Represents the input and output scope.
