@@ -8,13 +8,14 @@
 //! https://developer.apple.com/library/mac/documentation/MusicAudio/Conceptual/AudioUnitProgrammingGuide/Introduction/Introduction.html#//apple_ref/doc/uid/TP40003278-CH1-SW2
 //!
 
-use bindings::audio_unit as au;
+use bindings::core_audio as au;
 use error::{Error, AudioUnitError};
 use libc;
 use self::stream_format::StreamFormat;
 use std::mem;
 
 pub mod audio_format;
+pub mod audio_toolbox;
 pub mod stream_format;
 
 /// Represents the input and output scope.
