@@ -1,4 +1,4 @@
-//! 
+//!
 //! This module is an attempt to provide a friendly, rust-esque interface to
 //! Apple's Audio Unit API.
 //!
@@ -98,9 +98,10 @@ pub enum SubType {
     AudioFilePlayer      = 1634103404,
 }
 
-/// A rust representation of the au::AudioUnit.
+/// A rust representation of the au::AudioUnit, including a pointer to the current rendering callback.
 pub struct AudioUnit {
     audio_unit: au::AudioUnit,
+    callback: Option<*mut libc::c_void>
 }
 
 impl AudioUnit {
@@ -131,7 +132,7 @@ impl AudioUnit {
             let audio_unit_result = match component_result {
                 Ok(component) => {
                     au::AudioComponentInstanceNew(component, &mut audio_unit as *mut au::AudioUnit);
-                    Ok(audio_unit)
+                    Ok((audio_unit, None))
                 },
                 Err(err) => Err(err),
             };
@@ -173,13 +174,18 @@ impl Drop for AudioUnit {
             if let Err(err) = error::Error::from_os_status(au::AudioUnitUninitialize(self.audio_unit)) {
                 panic!("{:?}", err.description());
             }
+            if let Some(callback) = self.callback {
+                // Here, we transfer ownership of the callback back to the current scope so that it
+                // is dropped and cleaned up. Without this line, we would leak the Boxed callback.
+                let _: Box<RenderCallback> = mem::transmute(callback);
+            }
         }
     }
 }
 
 /// A context on which to build the audio unit.
 pub struct AudioUnitBuilder {
-    audio_unit_result: Result<au::AudioUnit, Error>,
+    audio_unit_result: Result<(au::AudioUnit, Option<*mut libc::c_void>), Error>,
 }
 
 impl AudioUnitBuilder {
@@ -188,18 +194,33 @@ impl AudioUnitBuilder {
     /// This will be called every time the AudioUnit requests audio.
     /// f is a boxed FnMut whose arg is [frames[channels]].
     #[inline]
-    pub fn render_callback(self, f: Box<FnMut(&mut[&mut[f32]], NumFrames) -> Result<(), String>>) -> AudioUnitBuilder {
+    pub fn render_callback(self, f: Box<FnMut(&mut[&mut[f32]], NumFrames) -> Result<(), String>>)
+        -> AudioUnitBuilder
+    {
         let audio_unit_result = match self.audio_unit_result {
             Err(err) => Err(err),
-            Ok(audio_unit) => {
-                let size_of_render_callback_struct = mem::size_of::<au::AURenderCallbackStruct>() as u32;
-
-                let callback = Box::new(RenderCallback { f: f });
+            Ok((audio_unit, previous_callback)) => {
                 unsafe {
-                    // Setup render callback.
+                    if let Some(previous_callback_ptr) = previous_callback {
+                        // Here, we transfer ownership of the previous callback back to the current
+                        // scope so that it is dropped and cleaned up. Without this line, we would
+                        // leak the Boxed callback.
+                        let _: Box<RenderCallback> = mem::transmute(previous_callback_ptr);
+                    }
+
+                    let size_of_render_callback_struct =
+                        mem::size_of::<au::AURenderCallbackStruct>() as u32;
+
+                    // Setup render callback. Notice that we relinquish ownership of the Callback
+                    // here so that it can be used as the C render callback via a void pointer.
+                    // We do however store the *mut so that we can transmute back to a
+                    // Box<RenderCallback> within our AudioUnit's Drop implementation (otherwise it
+                    // would leak).
+                    let boxed_render_callback = Box::new(RenderCallback { f: f });
+                    let callback: *mut libc::c_void = mem::transmute(boxed_render_callback);
                     let render_callback = au::AURenderCallbackStruct {
-                        inputProc: Some(input_proc), // TODO
-                        inputProcRefCon: mem::transmute(callback),
+                        inputProc: Some(input_proc),
+                        inputProcRefCon: callback,
                     };
 
                     match Error::from_os_status(au::AudioUnitSetProperty(
@@ -209,7 +230,7 @@ impl AudioUnitBuilder {
                                                 Element::Output as libc::c_uint,
                                                 &render_callback as *const _ as *const libc::c_void,
                                                 size_of_render_callback_struct)) {
-                        Ok(()) => Ok(audio_unit),
+                        Ok(()) => Ok((audio_unit, Some(callback))),
                         Err(err) => Err(err),
                     }
                 }
@@ -218,15 +239,15 @@ impl AudioUnitBuilder {
         AudioUnitBuilder { audio_unit_result: audio_unit_result }
     }
 
-    /// Finish building the audio unit, intialise it and start it.
+    /// Finish building the audio unit, initialise it and start it.
     pub fn start(self) -> Result<AudioUnit, Error> {
-        let audio_unit = try!(self.audio_unit_result);
+        let (audio_unit, callback) = try!(self.audio_unit_result);
         unsafe {
             // Initialise the audio unit!
             try!(Error::from_os_status(au::AudioUnitInitialize(audio_unit)));
             try!(Error::from_os_status(au::AudioOutputUnitStart(audio_unit)));
         }
-        Ok(AudioUnit { audio_unit: audio_unit })
+        Ok(AudioUnit { audio_unit: audio_unit, callback: callback })
     }
 
 }
@@ -244,10 +265,14 @@ extern "C" fn input_proc(in_ref_con: *mut libc::c_void,
                          _in_time_stamp: *const au::AudioTimeStamp,
                          _in_bus_number: au::UInt32,
                          in_number_frames: au::UInt32,
-                         io_data: *mut au::AudioBufferList) -> au::OSStatus {
+                         io_data: *mut au::AudioBufferList) -> au::OSStatus
+{
     let callback: *mut RenderCallback = in_ref_con as *mut _;
     unsafe {
         let num_channels = (*io_data).mNumberBuffers as usize;
+
+        // FIXME: We shouldn't need a Vec for this, it should probably be something like
+        // `&[&mut [f32]]` instead.
         let mut channels: Vec<&mut [f32]> =
             (0..num_channels)
                 .map(|i| {
@@ -255,13 +280,14 @@ extern "C" fn input_proc(in_ref_con: *mut libc::c_void,
                     ::std::slice::from_raw_parts_mut(slice_ptr, in_number_frames as usize)
                 })
                 .collect();
+
         match (*(*callback).f)(&mut channels[..], in_number_frames as usize) {
-            Ok(()) => 0,
+            Ok(()) => 0 as au::OSStatus,
             Err(description) => {
-                println!("{:?}", description);
+                use std::io::Write;
+                writeln!(::std::io::stderr(), "{:?}", description).unwrap();
                 AudioUnitError::NoConnection as au::OSStatus
             },
         }
     }
 }
-
