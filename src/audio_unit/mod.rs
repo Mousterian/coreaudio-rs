@@ -8,7 +8,7 @@
 //! https://developer.apple.com/library/mac/documentation/MusicAudio/Conceptual/AudioUnitProgrammingGuide/Introduction/Introduction.html#//apple_ref/doc/uid/TP40003278-CH1-SW2
 //!
 
-use bindings::core_audio as ca;
+use bindings::core_audio as au;
 use error::{Error, AudioUnitError};
 use libc;
 use self::stream_format::StreamFormat;
