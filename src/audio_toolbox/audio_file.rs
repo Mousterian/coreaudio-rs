@@ -6,7 +6,7 @@ use error::Error;
 use std::mem;
 use libc;
 
-pub fn open_audio_file(path: &str) -> Result<ca::AudioFileID, Error> {
+pub fn open_audio_file(path: &String) -> Result<ca::AudioFileID, Error> {
     unsafe {
         let url_ref = try!( match ca::CFURLCreateFromFileSystemRepresentation(ca::kCFAllocatorDefault,
                                                                                 path.as_ptr(),
