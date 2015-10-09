@@ -99,9 +99,9 @@ pub enum SubType {
     AudioFilePlayer      = 1634103404,
 }
 
-/// A rust representation of the ca::AudioUnit, including a pointer to the current rendering callback.
+/// A rust representation of the au::AudioUnit, including a pointer to the current rendering callback.
 pub struct AudioUnit {
-    audio_unit: ca::AudioUnit,
+    audio_unit: au::AudioUnit,
     callback: Option<*mut libc::c_void>
 }
 
@@ -111,10 +111,10 @@ impl AudioUnit {
     pub fn new(au_type: Type, sub_type: SubType) -> AudioUnitBuilder {
 
         // A description of the audio unit we desire.
-        let desc = ca::AudioComponentDescription {
+        let desc = au::AudioComponentDescription {
             componentType         : au_type as libc::c_uint,
             componentSubType      : sub_type as libc::c_uint,
-            componentManufacturer : ca::kAudioUnitManufacturer_Apple,
+            componentManufacturer : au::kAudioUnitManufacturer_Apple,
             componentFlags        : 0,
             componentFlagsMask    : 0,
         };
@@ -122,17 +122,17 @@ impl AudioUnit {
         unsafe {
             use std::ptr::null_mut;
             // Find the default audio unit for the description.
-            let component_result = match ca::AudioComponentFindNext(null_mut(), &desc as *const _) {
+            let component_result = match au::AudioComponentFindNext(null_mut(), &desc as *const _) {
                 component if component.is_null() => Err(Error::NoMatchingDefaultAudioUnitFound),
                 component                        => Ok(component),
             };
 
             // Get an instance of the default audio unit using the component.
-            let mut audio_unit: ca::AudioUnit = mem::uninitialized();
+            let mut audio_unit: au::AudioUnit = mem::uninitialized();
 
             let audio_unit_result = match component_result {
                 Ok(component) => {
-                    ca::AudioComponentInstanceNew(component, &mut audio_unit as *mut ca::AudioUnit);
+                    au::AudioComponentInstanceNew(component, &mut audio_unit as *mut au::AudioUnit);
                     Ok((audio_unit, None))
                 },
                 Err(err) => Err(err),
@@ -144,15 +144,15 @@ impl AudioUnit {
     /// Return the current Stream Format for the AudioUnit.
     pub fn stream_format(&self) -> StreamFormat {
         unsafe {
-            let mut asbd: ca::AudioStreamBasicDescription = mem::uninitialized();
-            let mut size = ::std::mem::size_of::<ca::AudioStreamBasicDescription>() as u32;
-            if let Err(err) = Error::from_os_status(ca::AudioUnitGetProperty(
+            let mut asbd: au::AudioStreamBasicDescription = mem::uninitialized();
+            let mut size = ::std::mem::size_of::<au::AudioStreamBasicDescription>() as u32;
+            if let Err(err) = Error::from_os_status(au::AudioUnitGetProperty(
                                                         self.audio_unit,
-                                                        ca::kAudioUnitProperty_StreamFormat,
+                                                        au::kAudioUnitProperty_StreamFormat,
                                                         Scope::Output as libc::c_uint,
                                                         Element::Output as libc::c_uint,
                                                         &mut asbd as *mut _ as *mut libc::c_void,
-                                                        &mut size as *mut ca::UInt32)) {
+                                                        &mut size as *mut au::UInt32)) {
                 panic!("{:?}", err);
             }
             StreamFormat::from_asbd(asbd)
@@ -169,10 +169,10 @@ impl Drop for AudioUnit {
         unsafe {
             use error;
             use std::error::Error;
-            if let Err(err) = error::Error::from_os_status(ca::AudioOutputUnitStop(self.audio_unit)) {
+            if let Err(err) = error::Error::from_os_status(au::AudioOutputUnitStop(self.audio_unit)) {
                 panic!("{:?}", err.description());
             }
-            if let Err(err) = error::Error::from_os_status(ca::AudioUnitUninitialize(self.audio_unit)) {
+            if let Err(err) = error::Error::from_os_status(au::AudioUnitUninitialize(self.audio_unit)) {
                 panic!("{:?}", err.description());
             }
             if let Some(callback) = self.callback {
@@ -186,7 +186,7 @@ impl Drop for AudioUnit {
 
 /// A context on which to build the audio unit.
 pub struct AudioUnitBuilder {
-    audio_unit_result: Result<(ca::AudioUnit, Option<*mut libc::c_void>), Error>,
+    audio_unit_result: Result<(au::AudioUnit, Option<*mut libc::c_void>), Error>,
 }
 
 impl AudioUnitBuilder {
@@ -210,7 +210,7 @@ impl AudioUnitBuilder {
                     }
 
                     let size_of_render_callback_struct =
-                        mem::size_of::<ca::AURenderCallbackStruct>() as u32;
+                        mem::size_of::<au::AURenderCallbackStruct>() as u32;
 
                     // Setup render callback. Notice that we relinquish ownership of the Callback
                     // here so that it can be used as the C render callback via a void pointer.
@@ -219,14 +219,14 @@ impl AudioUnitBuilder {
                     // would leak).
                     let boxed_render_callback = Box::new(RenderCallback { f: f });
                     let callback: *mut libc::c_void = mem::transmute(boxed_render_callback);
-                    let render_callback = ca::AURenderCallbackStruct {
+                    let render_callback = au::AURenderCallbackStruct {
                         inputProc: Some(input_proc),
                         inputProcRefCon: callback,
                     };
 
-                    match Error::from_os_status(ca::AudioUnitSetProperty(
+                    match Error::from_os_status(au::AudioUnitSetProperty(
                                                 audio_unit,
-                                                ca::kAudioUnitProperty_SetRenderCallback,
+                                                au::kAudioUnitProperty_SetRenderCallback,
                                                 Scope::Input as libc::c_uint,
                                                 Element::Output as libc::c_uint,
                                                 &render_callback as *const _ as *const libc::c_void,
@@ -245,8 +245,8 @@ impl AudioUnitBuilder {
         let (audio_unit, callback) = try!(self.audio_unit_result);
         unsafe {
             // Initialise the audio unit!
-            try!(Error::from_os_status(ca::AudioUnitInitialize(audio_unit)));
-            try!(Error::from_os_status(ca::AudioOutputUnitStart(audio_unit)));
+            try!(Error::from_os_status(au::AudioUnitInitialize(audio_unit)));
+            try!(Error::from_os_status(au::AudioOutputUnitStart(audio_unit)));
         }
         Ok(AudioUnit { audio_unit: audio_unit, callback: callback })
     }
@@ -262,11 +262,11 @@ pub struct RenderCallback {
 
 /// Callback procedure that will be called each time our audio_unit requests audio.
 extern "C" fn input_proc(in_ref_con: *mut libc::c_void,
-                         _io_action_flags: *mut ca::AudioUnitRenderActionFlags,
-                         _in_time_stamp: *const ca::AudioTimeStamp,
-                         _in_bus_number: ca::UInt32,
-                         in_number_frames: ca::UInt32,
-                         io_data: *mut ca::AudioBufferList) -> ca::OSStatus
+                         _io_action_flags: *mut au::AudioUnitRenderActionFlags,
+                         _in_time_stamp: *const au::AudioTimeStamp,
+                         _in_bus_number: au::UInt32,
+                         in_number_frames: au::UInt32,
+                         io_data: *mut au::AudioBufferList) -> au::OSStatus
 {
     let callback: *mut RenderCallback = in_ref_con as *mut _;
     unsafe {
@@ -283,11 +283,11 @@ extern "C" fn input_proc(in_ref_con: *mut libc::c_void,
                 .collect();
 
         match (*(*callback).f)(&mut channels[..], in_number_frames as usize) {
-            Ok(()) => 0 as ca::OSStatus,
+            Ok(()) => 0 as au::OSStatus,
             Err(description) => {
                 use std::io::Write;
                 writeln!(::std::io::stderr(), "{:?}", description).unwrap();
-                AudioUnitError::NoConnection as ca::OSStatus
+                AudioUnitError::NoConnection as au::OSStatus
             },
         }
     }
