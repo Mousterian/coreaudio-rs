@@ -99,6 +99,12 @@ pub enum SubType {
     AudioFilePlayer      = 1634103404,
 }
 
+#[derive(Copy, Clone, Debug)]
+/// Apple audio unit manufacturer ID.
+pub enum Manufacturer {
+    Apple = 1634758764
+}
+
 /// A rust representation of the au::AudioUnit, including a pointer to the current rendering callback.
 pub struct AudioUnit {
     audio_unit: au::AudioUnit,
