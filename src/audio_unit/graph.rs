@@ -1,88 +1,94 @@
 use bindings::core_audio as ca;
-use super::{Type, SubType, Manufacturer};
+use super::{Type, SubType, Manufacturer, AudioUnit};
 use error::{Error};
 use std::mem;
+use std::ptr;
+
+pub struct AUNode {
+	instance: ca::AUNode
+}
+
+impl AUNode {
+	pub fn new(node: ca::AUNode) -> AUNode {
+		AUNode{ instance: node }
+	}
+}
 
 pub struct AUGraph {
-	graph: ca::AUGraph
+	instance: ca::AUGraph
 }
 
 impl AUGraph {
 
-	/// Construct a new empty AUGraph. Use the returned AUGraphBuilder to add AudioUnits to it.
-	pub fn new() -> AUGraphBuilder {
+	/// Construct a new empty AUGraph.
+	pub fn new() -> Result<AUGraph,Error> {
 		unsafe {
 			let mut graph = mem::uninitialized();
-			let result = match Error::from_os_status(ca::NewAUGraph (&mut graph as *mut ca::AUGraph)) {
+			match Error::from_os_status(ca::NewAUGraph (&mut graph as *mut ca::AUGraph)) {
 				Ok(()) => {
-					println!("Created a new empty AUGraph.");
-					Ok( AUGraph{ graph: graph } )
+					Ok( AUGraph{ instance: graph } )
 				}
 				Err(err) => Err(err)
-			};
-			AUGraphBuilder{ graph_result: result }
+			}
 		}
 
 	}
 
+	pub fn add_node(&self, ac_type : Type, ac_sub_type: SubType, ac_manufacturer: Manufacturer) -> Result<AUNode,Error> {
+		unsafe {
+			let description = ca::AudioComponentDescription { 	componentType: ac_type as u32,
+																componentSubType: ac_sub_type as u32,
+																componentManufacturer: ac_manufacturer as u32,
+																/* TO DO: figure out does anybody actually use these? */
+																componentFlags: 0,
+																componentFlagsMask: 0 };
+			let mut node: ca::AUNode = mem::uninitialized();
+			match Error::from_os_status(ca::AUGraphAddNode(self.instance,
+										&description as *const ca::AudioComponentDescription,
+										&mut node as *mut ca::AUNode)) {
+				Ok(()) => Ok(AUNode::new(node)),
+				Err(e) => Err(e)
+			}
+		}
+	}
+
+	/// Finish building the audio unit graph, and open it.
+	pub fn open(&self) -> Result<(), Error> {
+		unsafe {
+			try!(Error::from_os_status(ca::AUGraphOpen(&mut *self.instance as ca::AUGraph)));
+			Ok(())
+		}
+	}
+
+	pub fn node_info(&self, node: AUNode) -> Result<AudioUnit, Error> {
+		unsafe {
+			let description: *mut ca::AudioComponentDescription = ptr::null_mut();
+			let mut audio_unit : AudioUnit = mem::uninitialized();
+
+			match Error::from_os_status(ca::AUGraphNodeInfo(self.instance, node.instance, description, &mut audio_unit.audio_unit)) {
+				Ok(()) => Ok(audio_unit),
+				Err(e) => Err(e)
+			}
+		}
+	}
 }
 
 impl Drop for AUGraph {
 	fn drop(&mut self) {
-		println!("In Drop for AUGraph");
 		unsafe {
 			use error;
 			use std::error::Error;
 
-			if let Err(err) = error::Error::from_os_status(ca::AUGraphStop(self.graph)) {
+			if let Err(err) = error::Error::from_os_status(ca::AUGraphStop(self.instance)) {
 				panic!("{:?}", err.description());
 			}
-			if let Err(err) = error::Error::from_os_status(ca::AUGraphUninitialize(self.graph)) {
+			if let Err(err) = error::Error::from_os_status(ca::AUGraphUninitialize(self.instance)) {
 				panic!("{:?}", err.description());
 			}
-			if let Err(err) = error::Error::from_os_status(ca::AUGraphClose(self.graph)) {
+			if let Err(err) = error::Error::from_os_status(ca::AUGraphClose(self.instance)) {
 				panic!("{:?}", err.description());
 			}
 		}
 	}
 }
 
-pub struct AUGraphBuilder {
-	graph_result: Result<AUGraph, Error>
-}
-
-impl AUGraphBuilder {
-	pub fn add_node(self, ac_type : Type, ac_sub_type: SubType, ac_manufacturer: Manufacturer) -> AUGraphBuilder {
-		let graph_result = match self.graph_result {
-			Ok(au_graph) => {
-				unsafe {
-					let description = ca::AudioComponentDescription { 	componentType: ac_type as u32,
-																		componentSubType: ac_sub_type as u32,
-																		componentManufacturer: ac_manufacturer as u32,
-																		/* TO DO: figure out does anybody actually use these? */
-																		componentFlags: 0,
-																		componentFlagsMask: 0 };
-					let mut node: ca::AUNode = mem::uninitialized();
-					match Error::from_os_status(ca::AUGraphAddNode(au_graph.graph,
-																	&description as *const ca::AudioComponentDescription,
-																	&mut node as *mut ca::AUNode)) {
-						// store node somewhere ?
-						Ok(()) => Ok(au_graph),
-						Err(e) => Err(e)
-					}
-				}
-			},
-			Err(e) => Err(e)
-		};
-		AUGraphBuilder { graph_result: graph_result }
-	}
-
-	/// Finish building the audio unit graph, and open it.
-	pub fn open(self) -> Result<AUGraph, Error> {
-		let au_graph = try!(self.graph_result);
-		unsafe {
-			try!(Error::from_os_status(ca::AUGraphOpen(&mut *au_graph.graph as ca::AUGraph)));
-			Ok(au_graph)
-		}
-	}
-}

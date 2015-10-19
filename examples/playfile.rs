@@ -19,10 +19,13 @@ fn play_file(filename: &String) -> Result<(),Error> {
     // TO DO: the apple playfile sample has a long complicated stringify method for the asbd, we should port it
     // and call it here
 
-    let _au_graph = try!(AUGraph::new()
-						 .add_node(Type::Output, SubType::DefaultOutput, Manufacturer::Apple)
-						 .add_node(Type::Generator, SubType::AudioFilePlayer, Manufacturer::Apple)
-						 .open());
+    let graph = try!(AUGraph::new());
+
+	let default_output_node = try!(graph.add_node(Type::Output, SubType::DefaultOutput, Manufacturer::Apple));
+
+	let file_player_node = try!(graph.add_node(Type::Generator, SubType::AudioFilePlayer, Manufacturer::Apple));
+
+	try!(graph.open());
 
     Ok(())
 }
@@ -46,5 +49,5 @@ fn main() {
             }
         }
     }
-()
+	()
 }
