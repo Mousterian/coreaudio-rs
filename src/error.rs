@@ -5,6 +5,7 @@ pub use self::audio::Error as AudioError;
 pub use self::audio_codec::Error as AudioCodecError;
 pub use self::audio_unit::Error as AudioUnitError;
 pub use self::audio_file::Error as AudioFileError;
+pub use self::graph::Error as GraphError;
 
 pub mod audio {
     use bindings::core_audio::OSStatus;
@@ -217,6 +218,59 @@ pub mod audio_unit {
 
 }
 
+pub mod graph {
+	use bindings::core_audio::OSStatus;
+
+	#[derive(Copy, Clone, Debug)]
+	pub enum Error {
+		NodeNotFound                = -10860,
+		InvalidConnection           = -10861,
+		OutputNodeErr               = -10862,
+//		CannotDoInCurrentContext    = -10863,
+		InvalidAudioUnit            = -10864,
+		Unknown
+	}
+
+	impl Error {
+
+		pub fn from_os_status(os_status: OSStatus) -> Result<(), Error> {
+			match os_status {
+				-10860 => Err(Error::NodeNotFound),
+				-10861 => Err(Error::InvalidConnection),
+				-10862 => Err(Error::OutputNodeErr),
+//				-10863 => Err(Error::CannotDoInCurrentContext),
+				-10864 => Err(Error::InvalidAudioUnit),
+				_      => Err(Error::Unknown),
+			}
+		}
+
+		pub fn to_os_status(&self) -> OSStatus {
+			*self as OSStatus
+		}
+
+	}
+
+	impl ::std::fmt::Display for Error {
+		fn fmt(&self, f: &mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error> {
+			write!(f, "{:?}", self)
+		}
+	}
+
+	impl ::std::error::Error for Error {
+		fn description(&self) -> &str {
+			match *self {
+				Error::NodeNotFound                 => "NodeNotFound",
+				Error::InvalidConnection          	=> "Invalid Connection",
+				Error::OutputNodeErr        		=> "Output Node Err",
+//				Error::CannotDoInCurrentContext     => "Cannot Do In Current Context",
+				Error::InvalidAudioUnit             => "Invalid Audio Unit",
+				Error::Unknown                      => "Unknown error occurred",
+			}
+		}
+	}
+
+}
+
 pub mod audio_file {
     use bindings::core_audio::OSStatus;
 
@@ -313,6 +367,7 @@ pub enum Error {
     AudioCodec(AudioCodecError),
     AudioUnit(AudioUnitError),
     AudioFile(AudioFileError),
+	Graph(GraphError),
     Unknown,
 }
 
@@ -341,10 +396,15 @@ impl Error {
                     Err(err)                     => return Err(Error::AudioUnit(err)),
                 }
                 match AudioFileError::from_os_status(os_status) {
-                        Ok(())                       => return Ok(()),
-                        Err(AudioFileError::Unknown) => (),
-                        Err(err)                     => return Err(Error::AudioFile(err)),
-                    }
+					Ok(())                       => return Ok(()),
+					Err(AudioFileError::Unknown) => (),
+					Err(err)                     => return Err(Error::AudioFile(err)),
+				}
+				match GraphError::from_os_status(os_status) {
+					Ok(())                       => return Ok(()),
+					Err(GraphError::Unknown) => (),
+					Err(err)                     => return Err(Error::Graph(err)),
+				}
                 Err(Error::Unknown)
             },
         }
@@ -360,6 +420,7 @@ impl Error {
             Error::AudioCodec(err)                  => err as OSStatus,
             Error::AudioUnit(err)                   => err as OSStatus,
             Error::AudioFile(err)                   => err as OSStatus,
+            Error::Graph(err)                  		=> err as OSStatus,
             _                                       => -1500,
         }
     }
@@ -382,6 +443,7 @@ impl ::std::error::Error for Error {
             Error::AudioCodec(ref err)              => err.description(),
             Error::AudioUnit(ref err)               => err.description(),
             Error::AudioFile(ref err)               => err.description(),
+            Error::Graph(ref err)               	=> err.description(),
             Error::Unknown                          => "An unknown error occurred",
         }
     }
