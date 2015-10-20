@@ -1,5 +1,5 @@
 use bindings::core_audio as ca;
-use super::{Type, SubType, Manufacturer, AudioUnit};
+use super::{Type, SubType, Manufacturer, AudioUnit, AudioUnitBuilder};
 use error::{Error};
 use std::mem;
 use std::ptr;
@@ -34,6 +34,7 @@ impl AUGraph {
 
 	}
 
+	/// wraps AUGraphAddNode
 	pub fn add_node(&self, ac_type : Type, ac_sub_type: SubType, ac_manufacturer: Manufacturer) -> Result<AUNode,Error> {
 		unsafe {
 			let description = ca::AudioComponentDescription { 	componentType: ac_type as u32,
@@ -52,7 +53,7 @@ impl AUGraph {
 		}
 	}
 
-	/// Finish building the audio unit graph, and open it.
+	/// Finish building the audio unit graph, and open it, wraps AUGraphOpen
 	pub fn open(&self) -> Result<(), Error> {
 		unsafe {
 			try!(Error::from_os_status(ca::AUGraphOpen(&mut *self.instance as ca::AUGraph)));
@@ -60,13 +61,17 @@ impl AUGraph {
 		}
 	}
 
-	pub fn node_info(&self, node: AUNode) -> Result<AudioUnit, Error> {
+	/// wraps AUGraphNodeInfo
+	pub fn node_info(&self, node: AUNode) -> Result<ca::AudioUnit, Error> {
 		unsafe {
 			let description: *mut ca::AudioComponentDescription = ptr::null_mut();
-			let mut audio_unit : AudioUnit = mem::uninitialized();
+			let mut audio_unit : ca::AudioUnit = mem::uninitialized();
 
-			match Error::from_os_status(ca::AUGraphNodeInfo(self.instance, node.instance, description, &mut audio_unit.audio_unit)) {
-				Ok(()) => Ok(audio_unit),
+
+			match Error::from_os_status(ca::AUGraphNodeInfo(self.instance, node.instance, description, &mut audio_unit)) {
+				Ok(()) => {
+					Ok(audio_unit)
+				}
 				Err(e) => Err(e)
 			}
 		}

@@ -27,6 +27,9 @@ fn play_file(filename: &String) -> Result<(),Error> {
 
 	try!(graph.open());
 
+	// install overload listener to detect when something is wrong
+	let audio_unit = try!(graph.node_info(file_player_node));
+
     Ok(())
 }
 
