@@ -107,8 +107,9 @@ pub enum Manufacturer {
 
 /// A rust representation of the au::AudioUnit, including a pointer to the current rendering callback.
 pub struct AudioUnit {
-    audio_unit: au::AudioUnit,
-    callback: Option<*mut libc::c_void>
+    instance: au::AudioUnit,
+    callback: Option<*mut libc::c_void>,
+	owned: bool
 }
 
 impl AudioUnit {
@@ -147,6 +148,23 @@ impl AudioUnit {
         }
     }
 
+	pub fn from_graph(instance: au::AudioUnit) -> AudioUnit {
+		AudioUnit { instance: instance, callback: None, owned: false }
+	}
+
+	pub fn set_format(	&self,
+						scope: au::AudioUnitScope,
+						element: au::AudioUnitElement,
+						format: &StreamFormat) -> Result<(), Error>
+	{
+		return Error::from_os_status(au::AudioUnitSetProperty (	self.instance,
+															au::kAudioUnitProperty_StreamFormat,
+															scope,
+															element,
+															format.to_asbd() as *mut _ as *mut libc::c_void,
+															mem::size_of::<au::AudioStreamBasicDescription>() as u32 ));
+	}
+
     /// Return the current Stream Format for the AudioUnit.
     pub fn stream_format(&self) -> StreamFormat {
         unsafe {
@@ -175,12 +193,16 @@ impl Drop for AudioUnit {
         unsafe {
             use error;
             use std::error::Error;
-            if let Err(err) = error::Error::from_os_status(au::AudioOutputUnitStop(self.audio_unit)) {
-                panic!("{:?}", err.description());
-            }
-            if let Err(err) = error::Error::from_os_status(au::AudioUnitUninitialize(self.audio_unit)) {
-                panic!("{:?}", err.description());
-            }
+			// if this AudioUnit was returned from an AUGraph, the graph will take responsibility for calling these when
+			// the graph is stopped.
+			if self.owned {
+				if let Err(err) = error::Error::from_os_status(au::AudioOutputUnitStop(self.audio_unit)) {
+					panic!("{:?}", err.description());
+				}
+				if let Err(err) = error::Error::from_os_status(au::AudioUnitUninitialize(self.audio_unit)) {
+					panic!("{:?}", err.description());
+				}
+			}
             if let Some(callback) = self.callback {
                 // Here, we transfer ownership of the callback back to the current scope so that it
                 // is dropped and cleaned up. Without this line, we would leak the Boxed callback.
@@ -254,7 +276,7 @@ impl AudioUnitBuilder {
             try!(Error::from_os_status(au::AudioUnitInitialize(audio_unit)));
             try!(Error::from_os_status(au::AudioOutputUnitStart(audio_unit)));
         }
-        Ok(AudioUnit { audio_unit: audio_unit, callback: callback })
+        Ok(AudioUnit { audio_unit: audio_unit, callback: callback, owned: true })
     }
 
 }

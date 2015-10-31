@@ -13,11 +13,11 @@ fn play_file(filename: &String) -> Result<(),Error> {
     let audio_file_id = try!( open_audio_file(filename) );
     println!("got audio_file_id {:?} ", audio_file_id);
 
-    let data_format_result = try!( get_data_format(audio_file_id) );
-	println!("got data_format_result {:?} ", data_format_result);
+    let data_format = try!( get_data_format(audio_file_id) );
+	println!("got data_format {:?} ", data_format);
 
-    // TO DO: the apple playfile sample has a long complicated stringify method for the asbd, we should port it
-    // and call it here
+    // TO DO: the apple playfile sample has a long complicated stringify method for the asbd, perhaps we should port it
+    // and call it here?
 
     let graph = try!(AUGraph::new());
 
@@ -27,8 +27,12 @@ fn play_file(filename: &String) -> Result<(),Error> {
 
 	try!(graph.open());
 
-	// install overload listener to detect when something is wrong
 	let audio_unit = try!(graph.node_info(file_player_node));
+
+	// prepare the file AU for playback
+
+	// set its output channels
+
 
     Ok(())
 }

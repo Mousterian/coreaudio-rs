@@ -62,7 +62,7 @@ impl AUGraph {
 	}
 
 	/// wraps AUGraphNodeInfo
-	pub fn node_info(&self, node: AUNode) -> Result<ca::AudioUnit, Error> {
+	pub fn node_info(&self, node: AUNode) -> Result<AudioUnit, Error> {
 		unsafe {
 			let description: *mut ca::AudioComponentDescription = ptr::null_mut();
 			let mut audio_unit : ca::AudioUnit = mem::uninitialized();
@@ -70,7 +70,9 @@ impl AUGraph {
 
 			match Error::from_os_status(ca::AUGraphNodeInfo(self.instance, node.instance, description, &mut audio_unit)) {
 				Ok(()) => {
-					Ok(audio_unit)
+					// we cannot construct a wrapper object via AudioUnit::new() here as it would double initialise and
+					// cause a panic. AudioUnit::from_graph wraps it but does not try to initialise or drop it.
+					Ok(AudioUnit::from_graph(audio_unit))
 				}
 				Err(e) => Err(e)
 			}
