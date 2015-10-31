@@ -1,5 +1,5 @@
 use bindings::core_audio as ca;
-use super::{Type, SubType, Manufacturer, AudioUnit, AudioUnitBuilder};
+use super::{Type, SubType, Manufacturer, AudioUnit};
 use error::{Error};
 use std::mem;
 use std::ptr;

@@ -1,4 +1,4 @@
-pub extern crate coreaudio_sys as bindings;
+extern crate coreaudio_sys as bindings;
 
 use bindings::core_audio as ca;
 use audio_unit::stream_format::StreamFormat;

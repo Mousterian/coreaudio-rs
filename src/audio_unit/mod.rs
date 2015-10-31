@@ -156,7 +156,8 @@ impl AudioUnit {
             try_os_status!(au::AudioUnitInitialize(instance));
             Ok(AudioUnit {
                 instance: instance,
-                callback: None
+                callback: None,
+				owned: true
             })
         }
     }
@@ -264,18 +265,18 @@ impl AudioUnit {
 		AudioUnit { instance: instance, callback: None, owned: false }
 	}
 
-	pub fn set_format(	&self,
-						scope: au::AudioUnitScope,
-						element: au::AudioUnitElement,
-						format: &StreamFormat) -> Result<(), Error>
-	{
-		return Error::from_os_status(au::AudioUnitSetProperty (	self.instance,
-															au::kAudioUnitProperty_StreamFormat,
-															scope,
-															element,
-															format.to_asbd() as *mut _ as *mut libc::c_void,
-															mem::size_of::<au::AudioStreamBasicDescription>() as u32 ));
-	}
+//	pub fn set_format(	&self,
+//						scope: au::AudioUnitScope,
+//						element: au::AudioUnitElement,
+//						format: &StreamFormat) -> Result<(), Error>
+//	{
+//		return Error::from_os_status(au::AudioUnitSetProperty (	self.instance,
+//															au::kAudioUnitProperty_StreamFormat,
+//															scope,
+//															element,
+//															format.to_asbd() as *mut _ as *mut libc::c_void,
+//															mem::size_of::<au::AudioStreamBasicDescription>() as u32 ));
+//	}
 
     /// Return the current Stream Format for the AudioUnit.
     pub fn stream_format(&self) -> Result<StreamFormat, Error> {
@@ -313,82 +314,6 @@ impl Drop for AudioUnit {
             self.free_render_callback();
         }
     }
-}
-
-/// A context on which to build the audio unit.
-pub struct AudioUnitBuilder {
-    audio_unit_result: Result<(au::AudioUnit, Option<*mut libc::c_void>), Error>,
-}
-
-impl AudioUnitBuilder {
-
-    /// Pass a render callback (aka "Input Procedure") to the audio unit.
-    /// This will be called every time the AudioUnit requests audio.
-    /// f is a boxed FnMut whose arg is [frames[channels]].
-    #[inline]
-    pub fn render_callback(self, f: Box<FnMut(&mut[&mut[f32]], NumFrames) -> Result<(), String>>)
-        -> AudioUnitBuilder
-    {
-        let audio_unit_result = match self.audio_unit_result {
-            Err(err) => Err(err),
-            Ok((audio_unit, previous_callback)) => {
-                unsafe {
-                    if let Some(previous_callback_ptr) = previous_callback {
-                        // Here, we transfer ownership of the previous callback back to the current
-                        // scope so that it is dropped and cleaned up. Without this line, we would
-                        // leak the Boxed callback.
-                        let _: Box<RenderCallback> = mem::transmute(previous_callback_ptr);
-                    }
-
-                    let size_of_render_callback_struct =
-                        mem::size_of::<au::AURenderCallbackStruct>() as u32;
-
-                    // Setup render callback. Notice that we relinquish ownership of the Callback
-                    // here so that it can be used as the C render callback via a void pointer.
-                    // We do however store the *mut so that we can transmute back to a
-                    // Box<RenderCallback> within our AudioUnit's Drop implementation (otherwise it
-                    // would leak).
-                    let boxed_render_callback = Box::new(RenderCallback { f: f });
-                    let callback: *mut libc::c_void = mem::transmute(boxed_render_callback);
-                    let render_callback = au::AURenderCallbackStruct {
-                        inputProc: Some(input_proc),
-                        inputProcRefCon: callback,
-                    };
-
-                    match Error::from_os_status(au::AudioUnitSetProperty(
-                                                audio_unit,
-                                                au::kAudioUnitProperty_SetRenderCallback,
-                                                Scope::Input as libc::c_uint,
-                                                Element::Output as libc::c_uint,
-                                                &render_callback as *const _ as *const libc::c_void,
-                                                size_of_render_callback_struct)) {
-                        Ok(()) => Ok((audio_unit, Some(callback))),
-                        Err(err) => Err(err),
-                    }
-                }
-            },
-        };
-        AudioUnitBuilder { audio_unit_result: audio_unit_result }
-    }
-
-    /// Finish building the audio unit, initialise it and start it.
-    pub fn start(self) -> Result<AudioUnit, Error> {
-        let (audio_unit, callback) = try!(self.audio_unit_result);
-        unsafe {
-            // Initialise the audio unit!
-            try!(Error::from_os_status(au::AudioUnitInitialize(audio_unit)));
-            try!(Error::from_os_status(au::AudioOutputUnitStart(audio_unit)));
-        }
-        Ok(AudioUnit { audio_unit: audio_unit, callback: callback })
-    }
-
-}
-
-pub type NumFrames = usize;
-
-/// A struct in which we will pass the callback to the AudioUnit's render callback.
-pub struct RenderCallback {
-    f: Box<FnMut(&mut[&mut[f32]], NumFrames) -> Result<(), String>>,
 }
 
 /// Callback procedure that will be called each time our audio_unit requests audio.
