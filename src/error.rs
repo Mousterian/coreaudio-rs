@@ -358,6 +358,7 @@ pub mod audio_file {
 }
 
 
+/// A wrapper around all possible Core Audio errors.
 #[derive(Copy, Clone, Debug)]
 pub enum Error {
     Unspecified,
