@@ -13,6 +13,7 @@ pub use coreaudio_sys as bindings;
 
 extern crate libc;
 
+#[macro_use]
 pub mod audio_unit;
 pub mod audio_toolbox;
 pub mod error;
