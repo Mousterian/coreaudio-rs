@@ -1,8 +1,14 @@
 use bindings::core_audio as ca;
-use super::{Type, SubType, Manufacturer, AudioUnit};
+use super::*;
 use error::{Error};
 use std::mem;
 use std::ptr;
+
+// TO DO: couldn't seem to pick up the macro definition from mod.rs in this file
+// so duplicating for the time being, something to do with macro export.
+macro_rules! try_os_status {
+($expr:expr) => (try!(Error::from_os_status($expr)))
+}
 
 pub struct AUNode {
 	instance: ca::AUNode
@@ -56,7 +62,7 @@ impl AUGraph {
 	/// Finish building the audio unit graph, and open it, wraps AUGraphOpen
 	pub fn open(&self) -> Result<(), Error> {
 		unsafe {
-			try!(Error::from_os_status(ca::AUGraphOpen(&mut *self.instance as ca::AUGraph)));
+			try_os_status!(ca::AUGraphOpen(&mut *self.instance as ca::AUGraph));
 			Ok(())
 		}
 	}
