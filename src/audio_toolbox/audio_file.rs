@@ -17,10 +17,10 @@ pub fn open_audio_file(path: &String) -> Result<ca::AudioFileID, Error> {
         } );
 
         let mut audio_file_id: ca::AudioFileID = mem::uninitialized();
-        try!( Error::from_os_status(ca::AudioFileOpenURL(url_ref,
-                                    ca::kAudioFileReadPermission as i8,
-                                    0,
-                                    &mut audio_file_id as *mut ca::AudioFileID)) );
+        try_os_status!(ca::AudioFileOpenURL(url_ref,
+						ca::kAudioFileReadPermission as i8,
+						0,
+						&mut audio_file_id as *mut ca::AudioFileID));
 
         ca::CFRelease(url_ref as ca::CFTypeRef);
         Ok(audio_file_id)
@@ -32,10 +32,10 @@ pub fn get_data_format(audio_file_id: ca::AudioFileID) -> Result<StreamFormat, E
         // get the number of channels of the file
         let mut file_format : ca::AudioStreamBasicDescription = mem::uninitialized();
         let mut property_size = mem::size_of::<ca::AudioStreamBasicDescription>() as u32;
-        try!( Error::from_os_status(ca::AudioFileGetProperty(   audio_file_id,
-                                                                ca::kAudioFilePropertyDataFormat,
-                                                                &mut property_size as *mut ca::UInt32,
-                                                                &mut file_format as *mut _ as *mut libc::c_void)  ));
+        try_os_status!(ca::AudioFileGetProperty(audio_file_id,
+												ca::kAudioFilePropertyDataFormat,
+												&mut property_size as *mut ca::UInt32,
+												&mut file_format as *mut _ as *mut libc::c_void));
         Ok(StreamFormat::from_asbd(file_format))
     }
 }
