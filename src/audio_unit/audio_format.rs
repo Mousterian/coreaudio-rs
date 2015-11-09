@@ -2,15 +2,13 @@
 //! 
 //! See the Core Audio Data Types Reference
 //! [here](https://developer.apple.com/library/mac/documentation/MusicAudio/Reference/CoreAudioDataTypesRef/#//apple_ref/doc/constant_group/Audio_Data_Format_Identifiers) for more info.
-
-
 use libc;
 
 /// Represents the kAudioFormat types in the form of an enum.
 #[derive(Copy, Clone, Debug)]
 #[allow(non_camel_case_types)]
 pub enum AudioFormat {
-    LinearPCM(Option<LinearPCMFlag>),     // = 1819304813,
+    LinearPCM(Option<LinearPCMFlags>),     // = 1819304813,
     AC3,                                  // = 1633889587,
     F60958AC3(Option<StandardFlag>),      // = 1667326771,
     AppleIMA4,                            // = 1768775988,
@@ -53,7 +51,7 @@ impl AudioFormat {
     /// Convert from C format and flag to Rust enum.
     pub fn from_format_and_flag(format: libc::c_uint, flag: Option<u32>) -> Option<AudioFormat> {
         match (format, flag) {
-            (1819304813, Some(i)) => Some(AudioFormat::LinearPCM(LinearPCMFlag::from_u32(i))),
+            (1819304813, Some(i)) => Some(AudioFormat::LinearPCM(LinearPCMFlags::from_bits(i))),
             (1633889587, _)       => Some(AudioFormat::AC3),
             (1667326771, Some(i)) => Some(AudioFormat::F60958AC3(StandardFlag::from_u32(i))),
             (1768775988, _)       => Some(AudioFormat::AppleIMA4),
@@ -96,7 +94,7 @@ impl AudioFormat {
     /// Convert from the Rust enum to the C format and flag.
     pub fn to_format_and_flag(&self) -> (libc::c_uint, Option<u32>) {
         match *self {
-            AudioFormat::LinearPCM(flag)      => (1819304813, flag.map(|flag| flag as u32)),
+            AudioFormat::LinearPCM(flag)      => (1819304813, flag.map(|flag| flag.bits)),
             AudioFormat::AC3                  => (1633889587, None),
             AudioFormat::F60958AC3(flag)      => (1667326771, flag.map(|flag| flag as u32)),
             AudioFormat::AppleIMA4            => (1768775988, None),
@@ -137,36 +135,21 @@ impl AudioFormat {
 
 }
 
-#[derive(Copy, Clone, Debug)]
-pub enum LinearPCMFlag {
-    IsFloat = 1,
-    IsBigEndian = 2,
-    IsSignedInteger = 4,
-    IsPacked = 8,
-    IsAlignedHigh = 16,
-    IsNonInterleaved = 32,
-    IsNonMixable = 64,
-    FlagsSampleFractionShift = 7,
-    FlagsSampleFractionMask = 8064,
+bitflags! {
+	flags LinearPCMFlags: u32 {
+		const IS_FLOAT    				= 0b00000001,
+		const IS_BIG_ENDIAN 			= 0b00000010,
+		const IS_SIGNED_INTEGER 		= 0b00000100,
+		const IS_PACKED 				= 0b00001000,
+		const IS_ALIGNED_HIGH 			= 0b00010000,
+		const IS_NON_INTERLEAVED 		= 0b00100000,
+		const IS_NON_MIXABLE 			= 0b01000000,
+//		const FlagsSampleFractionShift = 7,
+		const FLAGS_SAMPLE_FRACTION_MASK 	= 8064,
+	}
 }
 
-impl LinearPCMFlag {
-    pub fn from_u32(i: u32) -> Option<LinearPCMFlag> {
-        match i {
-            1           => Some(LinearPCMFlag::IsFloat),
-            2           => Some(LinearPCMFlag::IsBigEndian),
-            4           => Some(LinearPCMFlag::IsSignedInteger),
-            8           => Some(LinearPCMFlag::IsPacked),
-            16          => Some(LinearPCMFlag::IsAlignedHigh),
-            32          => Some(LinearPCMFlag::IsNonInterleaved),
-            64          => Some(LinearPCMFlag::IsNonMixable),
-            7           => Some(LinearPCMFlag::FlagsSampleFractionShift),
-            8064        => Some(LinearPCMFlag::FlagsSampleFractionMask),
-            _           => None,
-        }
-    }
-}
-
+// TODO: this looks like a set of bit masks as well, we should convert it to use the bitflags macro.
 #[derive(Copy, Clone, Debug)]
 pub enum StandardFlag {
     IsFloat = 1,
