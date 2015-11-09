@@ -20,8 +20,14 @@ pub mod graph;
 /// and [here](https://developer.apple.com/library/mac/documentation/MusicAudio/Conceptual/AudioUnitProgrammingGuide/TheAudioUnit/TheAudioUnit.html).
 #[derive(Copy, Clone, Debug)]
 pub enum Scope {
-    Output = 0,
-    Input  = 1,
+	Global		= 0,
+	Input		= 1,
+	Output		= 2,
+	Group		= 3,
+	Part		= 4,
+	Note		= 5,
+	Layer		= 6,
+	LayerItem	= 7
 }
 
 /// Represents the **Input** and **Output** **Element**s.
@@ -247,16 +253,20 @@ impl AudioUnit {
     }
 
     /// Sets the current Stream Format for the AudioUnit.
-    pub fn set_stream_format(&self, stream_format: StreamFormat) -> Result<(), Error> {
+	pub fn set_stream_format(&self,
+							scope: Scope,
+							element: Element,
+							stream_format: StreamFormat) -> Result<(), Error> {
         unsafe {
             let mut asbd = stream_format.to_asbd();
+			let size = mem::size_of::<au::AudioStreamBasicDescription>() as au::UInt32;
             try_os_status!(au::AudioUnitSetProperty(
                 self.instance,
                 au::kAudioUnitProperty_StreamFormat,
-                au::kAudioUnitScope_Input,
-                0,
+                scope as libc::c_uint,
+                element as libc::c_uint,
                 &mut asbd as *mut _ as *mut libc::c_void,
-                mem::size_of::<au::AudioStreamBasicDescription>() as u32));
+                size));
             Ok(())
         }
     }
@@ -265,29 +275,16 @@ impl AudioUnit {
 		AudioUnit { instance: instance, callback: None, owned: false }
 	}
 
-//	pub fn set_format(	&self,
-//						scope: au::AudioUnitScope,
-//						element: au::AudioUnitElement,
-//						format: &StreamFormat) -> Result<(), Error>
-//	{
-//		return Error::from_os_status(au::AudioUnitSetProperty (	self.instance,
-//															au::kAudioUnitProperty_StreamFormat,
-//															scope,
-//															element,
-//															format.to_asbd() as *mut _ as *mut libc::c_void,
-//															mem::size_of::<au::AudioStreamBasicDescription>() as u32 ));
-//	}
-
     /// Return the current Stream Format for the AudioUnit.
-    pub fn stream_format(&self) -> Result<StreamFormat, Error> {
+    pub fn stream_format(&self, scope: Scope, element: Element) -> Result<StreamFormat, Error> {
         unsafe {
             let mut asbd: au::AudioStreamBasicDescription = mem::uninitialized();
             let mut size = ::std::mem::size_of::<au::AudioStreamBasicDescription>() as u32;
             try_os_status!(au::AudioUnitGetProperty(
                 self.instance,
                 au::kAudioUnitProperty_StreamFormat,
-                Scope::Output as libc::c_uint,
-                Element::Output as libc::c_uint,
+                scope as libc::c_uint,
+                element as libc::c_uint,
                 &mut asbd as *mut _ as *mut libc::c_void,
                 &mut size as *mut au::UInt32));
             Ok(StreamFormat::from_asbd(asbd))
