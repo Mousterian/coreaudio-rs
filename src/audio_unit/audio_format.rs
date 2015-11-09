@@ -136,17 +136,17 @@ impl AudioFormat {
 }
 
 bitflags! {
-	flags LinearPCMFlags: u32 {
-		const IS_FLOAT    				= 0b00000001,
-		const IS_BIG_ENDIAN 			= 0b00000010,
-		const IS_SIGNED_INTEGER 		= 0b00000100,
-		const IS_PACKED 				= 0b00001000,
-		const IS_ALIGNED_HIGH 			= 0b00010000,
-		const IS_NON_INTERLEAVED 		= 0b00100000,
-		const IS_NON_MIXABLE 			= 0b01000000,
+    flags LinearPCMFlags: u32 {
+        const IS_FLOAT    				= 0b00000001,
+        const IS_BIG_ENDIAN 			= 0b00000010,
+        const IS_SIGNED_INTEGER 		= 0b00000100,
+        const IS_PACKED 				= 0b00001000,
+        const IS_ALIGNED_HIGH 			= 0b00010000,
+        const IS_NON_INTERLEAVED 		= 0b00100000,
+        const IS_NON_MIXABLE 			= 0b01000000,
 //		const FlagsSampleFractionShift = 7,
-		const FLAGS_SAMPLE_FRACTION_MASK 	= 8064,
-	}
+        const FLAGS_SAMPLE_FRACTION_MASK 	= 8064,
+    }
 }
 
 // TODO: this looks like a set of bit masks as well, we should convert it to use the bitflags macro.

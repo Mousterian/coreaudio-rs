@@ -219,55 +219,55 @@ pub mod audio_unit {
 }
 
 pub mod graph {
-	use bindings::core_audio::OSStatus;
+    use bindings::core_audio::OSStatus;
 
-	#[derive(Copy, Clone, Debug)]
-	pub enum Error {
-		NodeNotFound                = -10860,
-		InvalidConnection           = -10861,
-		OutputNodeErr               = -10862,
+    #[derive(Copy, Clone, Debug)]
+    pub enum Error {
+        NodeNotFound                = -10860,
+        InvalidConnection           = -10861,
+        OutputNodeErr               = -10862,
 //		CannotDoInCurrentContext    = -10863,
-		InvalidAudioUnit            = -10864,
-		Unknown
-	}
+        InvalidAudioUnit            = -10864,
+        Unknown
+    }
 
-	impl Error {
+    impl Error {
 
-		pub fn from_os_status(os_status: OSStatus) -> Result<(), Error> {
-			match os_status {
-				-10860 => Err(Error::NodeNotFound),
-				-10861 => Err(Error::InvalidConnection),
-				-10862 => Err(Error::OutputNodeErr),
+        pub fn from_os_status(os_status: OSStatus) -> Result<(), Error> {
+            match os_status {
+                -10860 => Err(Error::NodeNotFound),
+                -10861 => Err(Error::InvalidConnection),
+                -10862 => Err(Error::OutputNodeErr),
 //				-10863 => Err(Error::CannotDoInCurrentContext),
-				-10864 => Err(Error::InvalidAudioUnit),
-				_      => Err(Error::Unknown),
-			}
-		}
+                -10864 => Err(Error::InvalidAudioUnit),
+                _      => Err(Error::Unknown),
+            }
+        }
 
-		pub fn to_os_status(&self) -> OSStatus {
-			*self as OSStatus
-		}
+        pub fn to_os_status(&self) -> OSStatus {
+            *self as OSStatus
+        }
 
-	}
+    }
 
-	impl ::std::fmt::Display for Error {
-		fn fmt(&self, f: &mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error> {
-			write!(f, "{:?}", self)
-		}
-	}
+    impl ::std::fmt::Display for Error {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error> {
+            write!(f, "{:?}", self)
+        }
+    }
 
-	impl ::std::error::Error for Error {
-		fn description(&self) -> &str {
-			match *self {
-				Error::NodeNotFound                 => "NodeNotFound",
-				Error::InvalidConnection          	=> "Invalid Connection",
-				Error::OutputNodeErr        		=> "Output Node Err",
+    impl ::std::error::Error for Error {
+        fn description(&self) -> &str {
+            match *self {
+                Error::NodeNotFound                 => "NodeNotFound",
+                Error::InvalidConnection          	=> "Invalid Connection",
+                Error::OutputNodeErr        		=> "Output Node Err",
 //				Error::CannotDoInCurrentContext     => "Cannot Do In Current Context",
-				Error::InvalidAudioUnit             => "Invalid Audio Unit",
-				Error::Unknown                      => "Unknown error occurred",
-			}
-		}
-	}
+                Error::InvalidAudioUnit             => "Invalid Audio Unit",
+                Error::Unknown                      => "Unknown error occurred",
+            }
+        }
+    }
 
 }
 
@@ -299,24 +299,24 @@ pub mod audio_file {
 
         pub fn from_os_status(os_status: OSStatus) -> Result<(), Error> {
             match os_status {
-				2003334207 => Err(Error::Unspecified),
-				1954115647 => Err(Error::UnsupportedFileType),
-				1718449215 => Err(Error::UnsupportedDataFormat),
-				1886681407 => Err(Error::UnsupportedProperty),
-				561211770 => Err(Error::BadPropertySize),
-				1886547263 => Err(Error::Permissions),
-				1869640813 => Err(Error::NotOptimized),
-				1667787583 => Err(Error::InvalidChunk),
-				1868981823 => Err(Error::DoesNotAllow64BitDataSize),
-				1885563711 => Err(Error::InvalidPacketOffset),
-				1685348671 => Err(Error::InvalidFile),
-				1869627199 => Err(Error::OperationNotSupported),
-				-38 => Err(Error::NotOpen),
-				-39 => Err(Error::EndOfFile),
-				-40 => Err(Error::Position),
-				-43 => Err(Error::FileNotFound),
-				_      => Err(Error::Unknown),
-			}
+                2003334207 => Err(Error::Unspecified),
+                1954115647 => Err(Error::UnsupportedFileType),
+                1718449215 => Err(Error::UnsupportedDataFormat),
+                1886681407 => Err(Error::UnsupportedProperty),
+                561211770 => Err(Error::BadPropertySize),
+                1886547263 => Err(Error::Permissions),
+                1869640813 => Err(Error::NotOptimized),
+                1667787583 => Err(Error::InvalidChunk),
+                1868981823 => Err(Error::DoesNotAllow64BitDataSize),
+                1885563711 => Err(Error::InvalidPacketOffset),
+                1685348671 => Err(Error::InvalidFile),
+                1869627199 => Err(Error::OperationNotSupported),
+                -38 => Err(Error::NotOpen),
+                -39 => Err(Error::EndOfFile),
+                -40 => Err(Error::Position),
+                -43 => Err(Error::FileNotFound),
+                _      => Err(Error::Unknown),
+            }
         }
 
         pub fn to_os_status(&self) -> OSStatus {
@@ -334,24 +334,24 @@ pub mod audio_file {
     impl ::std::error::Error for Error {
         fn description(&self) -> &str {
             match *self {
-				Error::Unspecified                  => "Unspecified",
-				Error::UnsupportedFileType          => "Unsupported File Type",
-				Error::UnsupportedDataFormat        => "Unsupported Data Format",
-				Error::UnsupportedProperty          => "Unsupported Property",
-				Error::BadPropertySize              => "Bad Property Size",
-				Error::Permissions                  => "Permissions",
-				Error::NotOptimized                 => "Not Optimized",
-				Error::InvalidChunk                 => "Invalid Chunk",
-				Error::DoesNotAllow64BitDataSize    => "Does Not Allow 64 Bit Data Size",
-				Error::InvalidPacketOffset          => "Invalid Packet Offset",
-				Error::InvalidFile                  => "Invalid File",
-				Error::OperationNotSupported        => "Operation Not Supported",
-				Error::NotOpen                      => "Not Open",
-				Error::EndOfFile                    => "End Of File",
-				Error::Position                     => "Position",
-				Error::FileNotFound                 => "File Not Found",
-				Error::Unknown                      => "Unknown error occurred",
-			}
+                Error::Unspecified                  => "Unspecified",
+                Error::UnsupportedFileType          => "Unsupported File Type",
+                Error::UnsupportedDataFormat        => "Unsupported Data Format",
+                Error::UnsupportedProperty          => "Unsupported Property",
+                Error::BadPropertySize              => "Bad Property Size",
+                Error::Permissions                  => "Permissions",
+                Error::NotOptimized                 => "Not Optimized",
+                Error::InvalidChunk                 => "Invalid Chunk",
+                Error::DoesNotAllow64BitDataSize    => "Does Not Allow 64 Bit Data Size",
+                Error::InvalidPacketOffset          => "Invalid Packet Offset",
+                Error::InvalidFile                  => "Invalid File",
+                Error::OperationNotSupported        => "Operation Not Supported",
+                Error::NotOpen                      => "Not Open",
+                Error::EndOfFile                    => "End Of File",
+                Error::Position                     => "Position",
+                Error::FileNotFound                 => "File Not Found",
+                Error::Unknown                      => "Unknown error occurred",
+            }
         }
     }
 
@@ -368,7 +368,7 @@ pub enum Error {
     AudioCodec(AudioCodecError),
     AudioUnit(AudioUnitError),
     AudioFile(AudioFileError),
-	Graph(GraphError),
+    Graph(GraphError),
     Unknown,
 }
 
@@ -397,15 +397,15 @@ impl Error {
                     Err(err)                     => return Err(Error::AudioUnit(err)),
                 }
                 match AudioFileError::from_os_status(os_status) {
-					Ok(())                       => return Ok(()),
-					Err(AudioFileError::Unknown) => (),
-					Err(err)                     => return Err(Error::AudioFile(err)),
-				}
-				match GraphError::from_os_status(os_status) {
-					Ok(())                       => return Ok(()),
-					Err(GraphError::Unknown) => (),
-					Err(err)                     => return Err(Error::Graph(err)),
-				}
+                    Ok(())                       => return Ok(()),
+                    Err(AudioFileError::Unknown) => (),
+                    Err(err)                     => return Err(Error::AudioFile(err)),
+                }
+                match GraphError::from_os_status(os_status) {
+                    Ok(())                       => return Ok(()),
+                    Err(GraphError::Unknown) => (),
+                    Err(err)                     => return Err(Error::Graph(err)),
+                }
                 Err(Error::Unknown)
             },
         }

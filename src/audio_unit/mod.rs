@@ -20,14 +20,14 @@ pub mod graph;
 /// and [here](https://developer.apple.com/library/mac/documentation/MusicAudio/Conceptual/AudioUnitProgrammingGuide/TheAudioUnit/TheAudioUnit.html).
 #[derive(Copy, Clone, Debug)]
 pub enum Scope {
-	Global		= 0,
-	Input		= 1,
-	Output		= 2,
-	Group		= 3,
-	Part		= 4,
-	Note		= 5,
-	Layer		= 6,
-	LayerItem	= 7
+    Global		= 0,
+    Input		= 1,
+    Output		= 2,
+    Group		= 3,
+    Part		= 4,
+    Note		= 5,
+    Layer		= 6,
+    LayerItem	= 7
 }
 
 /// Represents the **Input** and **Output** **Element**s.
@@ -126,7 +126,7 @@ pub enum Manufacturer {
 pub struct AudioUnit {
     instance: au::AudioUnit,
     callback: Option<*mut libc::c_void>,
-	owned: bool
+    owned: bool
 }
 
 macro_rules! try_os_status {
@@ -163,7 +163,7 @@ impl AudioUnit {
             Ok(AudioUnit {
                 instance: instance,
                 callback: None,
-				owned: true
+                owned: true
             })
         }
     }
@@ -253,13 +253,13 @@ impl AudioUnit {
     }
 
     /// Sets the current Stream Format for the AudioUnit.
-	pub fn set_stream_format(&self,
-							scope: Scope,
-							element: Element,
-							stream_format: StreamFormat) -> Result<(), Error> {
+    pub fn set_stream_format(&self,
+                            scope: Scope,
+                            element: Element,
+                            stream_format: StreamFormat) -> Result<(), Error> {
         unsafe {
             let mut asbd = stream_format.to_asbd();
-			let size = mem::size_of::<au::AudioStreamBasicDescription>() as au::UInt32;
+            let size = mem::size_of::<au::AudioStreamBasicDescription>() as au::UInt32;
             try_os_status!(au::AudioUnitSetProperty(
                 self.instance,
                 au::kAudioUnitProperty_StreamFormat,
@@ -271,9 +271,9 @@ impl AudioUnit {
         }
     }
 
-	pub fn from_graph(instance: au::AudioUnit) -> AudioUnit {
-		AudioUnit { instance: instance, callback: None, owned: false }
-	}
+    pub fn from_graph(instance: au::AudioUnit) -> AudioUnit {
+        AudioUnit { instance: instance, callback: None, owned: false }
+    }
 
     /// Return the current Stream Format for the AudioUnit.
     pub fn stream_format(&self, scope: Scope, element: Element) -> Result<StreamFormat, Error> {
@@ -298,16 +298,16 @@ impl Drop for AudioUnit {
         unsafe {
             use error;
             use std::error::Error;
-			// if this AudioUnit was returned from an AUGraph, the graph will take responsibility for calling these when
-			// the graph is stopped.
-			if self.owned {
-				if let Err(err) = self .stop() {
-					panic!("{:?}", err.description());
-				}
-				if let Err(err) = error::Error::from_os_status(au::AudioUnitUninitialize(self .instance)) {
-					panic!("{:?}", err.description());
-				}
-			}
+            // if this AudioUnit was returned from an AUGraph, the graph will take responsibility for calling these when
+            // the graph is stopped.
+            if self.owned {
+                if let Err(err) = self .stop() {
+                    panic!("{:?}", err.description());
+                }
+                if let Err(err) = error::Error::from_os_status(au::AudioUnitUninitialize(self .instance)) {
+                    panic!("{:?}", err.description());
+                }
+            }
             self.free_render_callback();
         }
     }

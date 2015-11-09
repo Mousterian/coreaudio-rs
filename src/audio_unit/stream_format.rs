@@ -82,9 +82,9 @@ impl StreamFormat {
         self.channels_per_frame
     }
 
-	pub fn set_num_channels(&mut self, num_channels: u32) {
-		self.channels_per_frame = num_channels
-	}
+    pub fn set_num_channels(&mut self, num_channels: u32) {
+        self.channels_per_frame = num_channels
+    }
 }
 
 
